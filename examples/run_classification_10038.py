@@ -18,7 +18,7 @@ if __name__ == "__main__":
     feat_columns = list(data.columns)
     for col in skip_columns:
         feat_columns.remove(col)
-    feat_columns = list(filter(lambda col: col.startswith('kad') or col.startswith('kuser'), feat_columns))#'interest' in col
+    feat_columns = list(filter(lambda col: col.startswith('k'), feat_columns))#'interest' in col
 
     data[feat_columns] = data[feat_columns].fillna(-1)
     target = ['clk']
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     query_dnn_feature_columns = [SparseFeat(feat, data[feat].nunique())
                                  for feat in feat_columns if feat.startswith('kad')]
     match_dnn_feature_columns = [SparseFeat(feat, data[feat].nunique())
-                                 for feat in feat_columns if feat.startswith('kuser')]
+                                 for feat in feat_columns if not feat.startswith('kad')]
 
     query_feature_names = get_feature_names(query_dnn_feature_columns)
     match_feature_names = get_feature_names(match_dnn_feature_columns)
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     model.compile("adagrad", "binary_crossentropy",
                   metrics=["binary_crossentropy", "auc"], )
     model.fit(train_model_input, train[target].values,
-              batch_size=32, epochs=10, validation_split=0.0, verbose=2)
+              batch_size=32, epochs=10, validation_split=0.1, verbose=2)
 
     pred_ans = model.predict(test_model_input, 256)
     print("")
