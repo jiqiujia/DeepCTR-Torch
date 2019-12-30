@@ -9,6 +9,12 @@ from deepctr_torch.models import *
 from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
 import torch
 import argparse
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
 
@@ -22,6 +28,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_cuda", action='store_true')
     args = parser.parse_args()
 
+    logger.info("loading data...")
     with io.open(args.header_file, encoding='utf-8') as fin:
         header = fin.readlines()[0].strip().split(',')
     data = pd.read_csv(args.data_file, header=None, names=header)
@@ -31,7 +38,7 @@ if __name__ == "__main__":
     for col in skip_columns:
         feat_columns.remove(col)
 
-    print('feat_columns: ', feat_columns)
+    logger.info('feat_columns: {}'.format(feat_columns))
     data[feat_columns] = data[feat_columns].fillna(-1)
     target = [args.label_col]
 
@@ -63,7 +70,7 @@ if __name__ == "__main__":
 
     device = 'cpu'
     if args.use_cuda and torch.cuda.is_available():
-        print('cuda ready...')
+        logger.info('cuda ready...')
         device = 'cuda:0'
 
     model = DSSM(query_dnn_feature_columns, match_dnn_feature_columns, task='binary',
@@ -77,6 +84,6 @@ if __name__ == "__main__":
               validation_split=0.01, verbose=1)
 
     pred_ans = model.predict(test_model_input, 256)
-    print("")
-    print("test LogLoss", round(log_loss(test[target].values, pred_ans), 4))
-    print("test AUC", round(roc_auc_score(test[target].values, pred_ans), 4))
+    logger.info("")
+    logger.info("test LogLoss {}".format(round(log_loss(test[target].values, pred_ans), 4)))
+    logger.info("test AUC {}".format(round(roc_auc_score(test[target].values, pred_ans), 4)))

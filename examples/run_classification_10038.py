@@ -62,7 +62,7 @@ if __name__ == "__main__":
     model.compile("adagrad", "binary_crossentropy",
                   metrics=["binary_crossentropy", "auc"], lr=0.01)
     model.fit(train_model_input, train[target].values,
-              batch_size=32, epochs=10, validation_split=0.1, verbose=2)
+              batch_size=32, epochs=10, validation_split=0.1, verbose=1)
 
     pred_ans = model.predict(test_model_input, 256)
     print("")

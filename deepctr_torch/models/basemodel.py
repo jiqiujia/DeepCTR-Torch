@@ -17,11 +17,13 @@ import torch.utils.data as Data
 from sklearn.metrics import *
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+import logging
 
 from ..inputs import build_input_features, SparseFeat, DenseFeat, VarLenSparseFeat
 from ..layers import PredictionLayer
 from ..layers.utils import slice_arrays
 
+logger = logging.getLogger(__name__)
 
 class Linear(nn.Module):
     def __init__(self, feature_columns, feature_index, init_std=0.0001, device='cpu'):
@@ -192,7 +194,7 @@ class BaseModel(nn.Module):
         train_loader = DataLoader(
             dataset=train_tensor_data, shuffle=shuffle, batch_size=batch_size)
 
-        print(self.device, end="\n")
+        logger.info(self.device)
         model = self.train()
         loss_func = self.loss_func
         optim = self.optim
@@ -200,7 +202,7 @@ class BaseModel(nn.Module):
         sample_num = len(train_tensor_data)
         steps_per_epoch = (sample_num - 1) // batch_size + 1
 
-        print("Train on {0} samples, validate on {1} samples, {2} steps per epoch".format(
+        logger.info("Train on {} samples, validate on {} samples, {} steps per epoch".format(
             len(train_tensor_data), len(val_y),steps_per_epoch))
         for epoch in range(initial_epoch, epochs):
             start_time = time.time()
@@ -226,6 +228,8 @@ class BaseModel(nn.Module):
                         total_loss.backward(retain_graph=True)
                         optim.step()
 
+                        logger.info("loss {}".format(total_loss))
+
                         if verbose > 0:
                             for name, metric_fun in self.metrics.items():
                                 if name not in train_result:
@@ -240,7 +244,7 @@ class BaseModel(nn.Module):
 
             epoch_time = int(time.time() - start_time)
             if verbose > 0:
-                print('Epoch {0}/{1}'.format(epoch + 1, epochs))
+                logger.info('Epoch {}/{}'.format(epoch + 1, epochs))
 
                 eval_str = "{0}s - loss: {1: .4f}".format(
                     epoch_time, total_loss_epoch / sample_num)
@@ -255,7 +259,7 @@ class BaseModel(nn.Module):
                     for name, result in eval_result.items():
                         eval_str += " - val_" + name + \
                             ": {0: .4f}".format(result)
-                print(eval_str)
+                logger.info(eval_str)
 
     def evaluate(self, x, y, batch_size=256):
         """
