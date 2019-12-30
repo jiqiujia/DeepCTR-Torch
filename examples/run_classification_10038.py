@@ -8,6 +8,12 @@ from deepctr_torch.models import *
 from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
 import torch
 
+import logging
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S',
+                    level=logging.INFO)
+logging.getLogger(__name__)
+
 if __name__ == "__main__":
     data = pd.read_csv(sys.argv[1])
     skip_columns = set()

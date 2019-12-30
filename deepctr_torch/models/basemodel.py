@@ -211,7 +211,8 @@ class BaseModel(nn.Module):
             # if abs(loss_last - loss_now) < 0.0
             train_result = {}
             try:
-                with tqdm(enumerate(train_loader), disable=verbose != 1) as t:
+                with tqdm(enumerate(train_loader), disable=verbose != 1, ascii=True,
+                          total=steps_per_epoch, mininterval=10) as t:
                     for index, (x_train, y_train) in t:
                         x = x_train.to(self.device).float()
                         y = y_train.to(self.device).float()
@@ -228,7 +229,8 @@ class BaseModel(nn.Module):
                         total_loss.backward(retain_graph=True)
                         optim.step()
 
-                        logger.info("loss {}".format(total_loss))
+                        if index + 1 % 1000 == 0:
+                            logger.info("loss {}".format(total_loss_epoch / (index + 1)))
 
                         if verbose > 0:
                             for name, metric_fun in self.metrics.items():
