@@ -13,23 +13,25 @@ import argparse
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("label_col", type=str, default="clk")
-    parser.add_argument("header_file", type=str, required=True)
-    parser.add_argument("data_file", type=str, required=True)
-    parser.add_argument("batch_size", type=int, default=32)
-    parser.add_argument("epoch_num", type=int, default=2)
-    parser.add_argument("embed_dim", type=int, required=True)
+    parser.add_argument("--label_col", type=str, default="clk")
+    parser.add_argument("--header_file", type=str, required=True)
+    parser.add_argument("--data_file", type=str, required=True)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--epoch_num", type=int, default=2)
+    parser.add_argument("--embed_dim", type=int, required=True)
+    parser.add_argument("--use_cuda", action='store_true')
     args = parser.parse_args()
 
     with io.open(args.header_file, encoding='utf-8') as fin:
         header = fin.readlines()[0].strip().split(',')
     data = pd.read_csv(args.data_file, header=None, names=header)
 
-    skip_columns = [args.label_col]
+    skip_columns = [args.label_col, 'adid']
     feat_columns = list(data.columns)
     for col in skip_columns:
         feat_columns.remove(col)
 
+    print('feat_columns: ', feat_columns)
     data[feat_columns] = data[feat_columns].fillna(-1)
     target = [args.label_col]
 
@@ -60,8 +62,7 @@ if __name__ == "__main__":
     # 4.Define Model,train,predict and evaluate
 
     device = 'cpu'
-    use_cuda = True
-    if use_cuda and torch.cuda.is_available():
+    if args.use_cuda and torch.cuda.is_available():
         print('cuda ready...')
         device = 'cuda:0'
 
@@ -73,7 +74,7 @@ if __name__ == "__main__":
                   metrics=["binary_crossentropy", "auc"], lr=0.01)
     model.fit(train_model_input, train[target].values,
               batch_size=args.batch_size, epochs=args.epoch_num,
-              validation_split=0.01, verbose=2)
+              validation_split=0.01, verbose=1)
 
     pred_ans = model.predict(test_model_input, 256)
     print("")
