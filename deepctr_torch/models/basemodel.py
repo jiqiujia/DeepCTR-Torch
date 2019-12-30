@@ -383,6 +383,7 @@ class BaseModel(nn.Module):
     def compile(self, optimizer,
                 loss=None,
                 metrics=None,
+                lr=0.001,
                 ):
         """
         :param optimizer: String (name of optimizer) or optimizer instance. See [optimizers](https://pytorch.org/docs/stable/optim.html).
@@ -390,20 +391,20 @@ class BaseModel(nn.Module):
         :param metrics: List of metrics to be evaluated by the model during training and testing. Typically you will use `metrics=['accuracy']`.
         """
 
-        self.optim = self._get_optim(optimizer)
+        self.optim = self._get_optim(optimizer, lr)
         self.loss_func = self._get_loss_func(loss)
         self.metrics = self._get_metrics(metrics)
 
-    def _get_optim(self, optimizer):
+    def _get_optim(self, optimizer, lr):
         if isinstance(optimizer, str):
             if optimizer == "sgd":
-                optim = torch.optim.SGD(self.parameters(), lr=0.01)
+                optim = torch.optim.SGD(self.parameters(), lr=lr)
             elif optimizer == "adam":
-                optim = torch.optim.Adam(self.parameters())  # 0.001
+                optim = torch.optim.Adam(self.parameters(), lr=lr)  # 0.001
             elif optimizer == "adagrad":
-                optim = torch.optim.Adagrad(self.parameters())  # 0.01
+                optim = torch.optim.Adagrad(self.parameters(), lr=lr)  # 0.01
             elif optimizer == "rmsprop":
-                optim = torch.optim.RMSprop(self.parameters())
+                optim = torch.optim.RMSprop(self.parameters(), lr=lr)
             else:
                 raise NotImplementedError
         else:
