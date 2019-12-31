@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 import sys
 import io
+import glob
 import pandas as pd
 from sklearn.metrics import log_loss, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from deepctr_torch.models import *
 from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
+from deepctr_torch.input_loaders import MultiShardsCSVDataset
 import torch
+from torch.utils.data import DataLoader
+from torch.utils.data.dataloader import default_collate
 import argparse
+import collections
 import logging
+
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -26,46 +32,45 @@ if __name__ == "__main__":
     parser.add_argument("--epoch_num", type=int, default=2)
     parser.add_argument("--embed_dim", type=int, required=True)
     parser.add_argument("--use_cuda", action='store_true')
+    parser.add_argument("--col_dim_file", type=str, required=True)
     args = parser.parse_args()
 
     logger.info("loading data...")
     with io.open(args.header_file, encoding='utf-8') as fin:
-        header = fin.readlines()[0].strip().split(',')
-    data = pd.read_csv(args.data_file, header=None, names=header)
+        columns = fin.readlines()[0].strip().split(',')
 
     skip_columns = [args.label_col, 'adid']
-    feat_columns = list(data.columns)
+    feat_columns = list(columns)
     for col in skip_columns:
         feat_columns.remove(col)
 
     logger.info('feat_columns: {}'.format(feat_columns))
-    data[feat_columns] = data[feat_columns].fillna(-1)
     target = [args.label_col]
 
-    # 1.Label Encoding for sparse features,and do simple Transformation for dense features
-    # for feat in feat_columns:
-    #     print(feat)
-    #     lbe = LabelEncoder()
-    #     data[feat] = lbe.fit_transform(data[feat])
+    col_dim_dict = {}
+    with io.open(args.col_dim_file, encoding='utf-8') as fin:
+        for line in fin.readlines():
+            line = line.strip()
+            arr = line.split('\t')
+            col_dim_dict[arr[0]] = int(arr[1])
 
-    # 2.count #unique features for each sparse field,and record dense feature field name
-
-    query_dnn_feature_columns = [SparseFeat(feat, data[feat].nunique())
+    query_dnn_feature_columns = [SparseFeat(feat, col_dim_dict[feat])
                                  for feat in feat_columns if feat.startswith('kad')]
-    match_dnn_feature_columns = [SparseFeat(feat, data[feat].nunique())
+    match_dnn_feature_columns = [SparseFeat(feat, col_dim_dict[feat])
                                  for feat in feat_columns if not feat.startswith('kad')]
 
     query_feature_names = get_feature_names(query_dnn_feature_columns)
     match_feature_names = get_feature_names(match_dnn_feature_columns)
     feature_names = query_feature_names + match_feature_names
 
+    feat_idx = [columns.index(name) for name in feature_names]
+    target_idx = columns.index(args.label_col)
     # 3.generate input data for model
 
-    train, test = train_test_split(data, test_size=0.1)
-
-    # change column order to match feature index
-    train_model_input = {name: train[name] for name in feature_names}
-    test_model_input = {name: test[name] for name in feature_names}
+    shard_paths = glob.glob(args.data_file)
+    train_dataset = MultiShardsCSVDataset(shard_paths, feat_idx, target_idx)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=2,
+                                  collate_fn=default_collate)
 
     # 4.Define Model,train,predict and evaluate
 
@@ -78,13 +83,12 @@ if __name__ == "__main__":
                  embedding_size=args.embed_dim, dnn_dropout=0.1,
                  l2_reg_embedding=0, dnn_use_bn=True, device=device)
 
-    model.compile("adam", "binary_crossentropy",
-                  metrics=["binary_crossentropy", "auc"], lr=0.001)
-    model.fit(train_model_input, train[target].values,
-              batch_size=args.batch_size, epochs=args.epoch_num,
-              validation_split=0.01, verbose=1)
+    model.compile("adagrad", "binary_crossentropy",
+                  metrics=["binary_crossentropy", "auc"], lr=0.01)
+    model.fit(train_dataloader, None, sample_num=train_dataset.__len__(),
+              batch_size=args.batch_size, epochs=args.epoch_num, verbose=1)
 
-    pred_ans = model.predict(test_model_input, 256)
-    logger.info("")
-    logger.info("test LogLoss {}".format(round(log_loss(test[target].values, pred_ans), 4)))
-    logger.info("test AUC {}".format(round(roc_auc_score(test[target].values, pred_ans), 4)))
+    # pred_ans = model.predict(test_model_input, 256)
+    # logger.info("")
+    # logger.info("test LogLoss {}".format(round(log_loss(test[target].values, pred_ans), 4)))
+    # logger.info("test AUC {}".format(round(roc_auc_score(test[target].values, pred_ans), 4)))

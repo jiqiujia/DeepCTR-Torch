@@ -106,6 +106,7 @@ class BaseModel(nn.Module):
 
         self.reg_loss = torch.zeros((1,), device=device)
         self.device = device  # device
+        logger.info(self.device)
 
         self.feature_index = build_input_features(
             linear_feature_columns + dnn_feature_columns)
@@ -197,8 +198,6 @@ class BaseModel(nn.Module):
         train_loader = DataLoader(
             dataset=train_tensor_data, shuffle=shuffle, batch_size=batch_size)
 
-        logger.info(self.device)
-        model = self.train()
         loss_func = self.loss_func
         optim = self.optim
 
@@ -209,6 +208,7 @@ class BaseModel(nn.Module):
         logger.info("Train on {} samples, validate on {} samples, {} steps per epoch".format(
             len(train_tensor_data), len(val_y), steps_per_epoch))
         for epoch in range(initial_epoch, epochs):
+            model = self.train()
             start_time = time.time()
             loss_epoch = 0
             total_loss_epoch = 0
@@ -261,6 +261,7 @@ class BaseModel(nn.Module):
                             logger.info(eval_str)
 
                             torch.save(model.state_dict(), 'dssm.model')
+                            model.train()
 
             except KeyboardInterrupt:
                 t.close()
@@ -285,6 +286,73 @@ class BaseModel(nn.Module):
                         eval_str += " - val_" + name + \
                                     ": {0: .4f}".format(result)
                 logger.info(eval_str)
+
+    def fit(self, train_loader,
+            val_loader,
+            batch_size,
+            sample_num,
+            epochs=1,
+            verbose=1,
+            initial_epoch=0):
+
+        loss_func = self.loss_func
+        optim = self.optim
+
+        steps_per_epoch = (sample_num - 1) // batch_size + 1
+
+        scheduler = CosineAnnealingLR(optim, epochs * steps_per_epoch, eta_min=1e-6)
+        logger.info("Train on {} samples, {} steps per epoch".format(
+            sample_num, steps_per_epoch))
+        for epoch in range(initial_epoch, epochs):
+            model = self.train()
+            start_time = time.time()
+            loss_epoch = 0
+            total_loss_epoch = 0
+            # if abs(loss_last - loss_now) < 0.0
+            train_result = {}
+            with tqdm(enumerate(train_loader), disable=verbose != 1, ascii=True,
+                      total=steps_per_epoch, mininterval=10) as t:
+                for index, (x_train, y_train) in t:
+                    x = x_train.to(self.device).float()
+                    y = y_train.to(self.device).float()
+
+                    y_pred = model(x).squeeze()
+
+                    optim.zero_grad()
+                    loss = loss_func(y_pred, y.squeeze(), reduction='mean')
+
+                    total_loss = loss + self.reg_loss
+
+                    loss_epoch += loss.item()
+                    total_loss_epoch += total_loss.item()
+                    total_loss.backward(retain_graph=True)
+                    optim.step()
+                    scheduler.step(epoch * steps_per_epoch + index + 1)
+
+                    if verbose > 0:
+                        for name, metric_fun in self.metrics.items():
+                            if name not in train_result:
+                                train_result[name] = []
+                            train_result[name].append(metric_fun(
+                                y.cpu().data.numpy(), y_pred.cpu().data.numpy()))
+                epoch_time = int(time.time() - start_time)
+                if verbose > 0:
+                    logger.info('Epoch {}/{} with lr {}'.format(epoch + 1, epochs, scheduler.get_lr()))
+
+                    eval_str = "{0}s - loss: {1: .4f}".format(
+                        epoch_time, total_loss_epoch / steps_per_epoch)
+
+                    for name, result in train_result.items():
+                        eval_str += " - " + name + \
+                                    ": {0: .4f}".format(np.sum(result) / steps_per_epoch)
+
+                    # if len(val_x) and len(val_y):
+                    #     eval_result = self.evaluate(val_x, val_y, batch_size)
+                    #
+                    #     for name, result in eval_result.items():
+                    #         eval_str += " - val_" + name + \
+                    #                     ": {0: .4f}".format(result)
+                    logger.info(eval_str)
 
     def evaluate(self, x, y, batch_size=256):
         """
