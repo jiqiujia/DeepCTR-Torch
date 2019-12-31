@@ -74,8 +74,8 @@ if __name__ == "__main__":
         device = 'cuda:0'
 
     model = DSSM(query_dnn_feature_columns, match_dnn_feature_columns, task='binary',
-                 embedding_size=args.embed_dim,
-                 l2_reg_embedding=1e-5, dnn_use_bn=True, device=device)
+                 embedding_size=args.embed_dim, dnn_dropout=0.1,
+                 l2_reg_embedding=0, dnn_use_bn=True, device=device)
 
     model.compile("adagrad", "binary_crossentropy",
                   metrics=["binary_crossentropy", "auc"], lr=0.01)

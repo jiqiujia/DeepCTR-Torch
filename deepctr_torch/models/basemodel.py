@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as Data
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from sklearn.metrics import *
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -24,6 +25,7 @@ from ..layers import PredictionLayer
 from ..layers.utils import slice_arrays
 
 logger = logging.getLogger(__name__)
+
 
 class Linear(nn.Module):
     def __init__(self, feature_columns, feature_index, init_std=0.0001, device='cpu'):
@@ -49,7 +51,8 @@ class Linear(nn.Module):
         if len(self.dense_feature_columns) > 0:
             self.weight = nn.Parameter(torch.Tensor(sum(fc.dimension for fc in self.dense_feature_columns), 1)).to(
                 device)
-            torch.nn.init.normal_(self.weight, mean=0, std=init_std)
+            #torch.nn.init.normal_(self.weight, mean=0, std=init_std)
+            torch.nn.init.xavier_normal_(self.weight)
 
     def forward(self, X):
 
@@ -149,7 +152,7 @@ class BaseModel(nn.Module):
         :param shuffle: Boolean. Whether to shuffle the order of the batches at the beginning of each epoch.
 
         """
-        if isinstance(x,dict):
+        if isinstance(x, dict):
             x = [x[feature] for feature in self.feature_index]
         if validation_data:
             if len(validation_data) == 2:
@@ -202,8 +205,9 @@ class BaseModel(nn.Module):
         sample_num = len(train_tensor_data)
         steps_per_epoch = (sample_num - 1) // batch_size + 1
 
+        scheduler = CosineAnnealingLR(optim, epochs * steps_per_epoch, eta_min=1e-6)
         logger.info("Train on {} samples, validate on {} samples, {} steps per epoch".format(
-            len(train_tensor_data), len(val_y),steps_per_epoch))
+            len(train_tensor_data), len(val_y), steps_per_epoch))
         for epoch in range(initial_epoch, epochs):
             start_time = time.time()
             loss_epoch = 0
@@ -220,7 +224,7 @@ class BaseModel(nn.Module):
                         y_pred = model(x).squeeze()
 
                         optim.zero_grad()
-                        loss = loss_func(y_pred, y.squeeze(), reduction='sum')
+                        loss = loss_func(y_pred, y.squeeze(), reduction='mean')
 
                         total_loss = loss + self.reg_loss
 
@@ -228,8 +232,9 @@ class BaseModel(nn.Module):
                         total_loss_epoch += total_loss.item()
                         total_loss.backward(retain_graph=True)
                         optim.step()
+                        scheduler.step(epoch * steps_per_epoch + index + 1)
 
-                        if index + 1 % 1000 == 0:
+                        if (index + 1) % 1000 == 0:
                             logger.info("loss {}".format(total_loss_epoch / (index + 1)))
 
                         if verbose > 0:
@@ -239,6 +244,24 @@ class BaseModel(nn.Module):
                                 train_result[name].append(metric_fun(
                                     y.cpu().data.numpy(), y_pred.cpu().data.numpy()))
 
+                        if (index + 1) % (steps_per_epoch / 10) == 0:
+                            logger.info('Epoch {}/{} with lr {}'.format(epoch + 1, epochs, scheduler.get_lr()))
+
+                            eval_str = "s - loss: {0: .4f}".format(
+                                total_loss_epoch / steps_per_epoch)
+
+                            for name, result in train_result.items():
+                                eval_str += " - " + name + \
+                                            ": {0: .4f}".format(np.sum(result) / steps_per_epoch)
+                            eval_result = self.evaluate(val_x, val_y, batch_size)
+                            eval_str = ""
+                            for name, result in eval_result.items():
+                                eval_str += " - val_" + name + \
+                                            ": {0: .4f}".format(result)
+                            logger.info(eval_str)
+
+                            torch.save(model.state_dict(), 'dssm.model')
+
             except KeyboardInterrupt:
                 t.close()
                 raise
@@ -246,21 +269,21 @@ class BaseModel(nn.Module):
 
             epoch_time = int(time.time() - start_time)
             if verbose > 0:
-                logger.info('Epoch {}/{}'.format(epoch + 1, epochs))
+                logger.info('Epoch {}/{} with lr {}'.format(epoch + 1, epochs, scheduler.get_lr()))
 
                 eval_str = "{0}s - loss: {1: .4f}".format(
-                    epoch_time, total_loss_epoch / sample_num)
+                    epoch_time, total_loss_epoch / steps_per_epoch)
 
                 for name, result in train_result.items():
                     eval_str += " - " + name + \
-                        ": {0: .4f}".format(np.sum(result) / steps_per_epoch)
+                                ": {0: .4f}".format(np.sum(result) / steps_per_epoch)
 
                 if len(val_x) and len(val_y):
                     eval_result = self.evaluate(val_x, val_y, batch_size)
 
                     for name, result in eval_result.items():
                         eval_str += " - val_" + name + \
-                            ": {0: .4f}".format(result)
+                                    ": {0: .4f}".format(result)
                 logger.info(eval_str)
 
     def evaluate(self, x, y, batch_size=256):
@@ -356,9 +379,11 @@ class BaseModel(nn.Module):
 
         return embedding_dict
 
-    def compute_input_dim(self, feature_columns, embedding_size=1, include_sparse=True, include_dense=True, feature_group=False):
+    def compute_input_dim(self, feature_columns, embedding_size=1, include_sparse=True, include_dense=True,
+                          feature_group=False):
         sparse_feature_columns = list(
-            filter(lambda x: isinstance(x, (SparseFeat, VarLenSparseFeat)), feature_columns)) if len(feature_columns) else []
+            filter(lambda x: isinstance(x, (SparseFeat, VarLenSparseFeat)), feature_columns)) if len(
+            feature_columns) else []
         dense_feature_columns = list(
             filter(lambda x: isinstance(x, DenseFeat), feature_columns)) if len(feature_columns) else []
 
@@ -404,7 +429,7 @@ class BaseModel(nn.Module):
     def _get_optim(self, optimizer, lr):
         if isinstance(optimizer, str):
             if optimizer == "sgd":
-                optim = torch.optim.SGD(self.parameters(), lr=lr)
+                optim = torch.optim.SGD(self.parameters(), lr=lr, momentum=0.9)
             elif optimizer == "adam":
                 optim = torch.optim.Adam(self.parameters(), lr=lr)  # 0.001
             elif optimizer == "adagrad":

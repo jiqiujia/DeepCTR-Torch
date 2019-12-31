@@ -63,10 +63,10 @@ if __name__ == "__main__":
         device = 'cuda:0'
 
     model = DSSM(query_dnn_feature_columns, match_dnn_feature_columns, task='binary',
-                 l2_reg_embedding=1e-5, dnn_use_bn=True, device=device)
-
-    model.compile("adagrad", "binary_crossentropy",
-                  metrics=["binary_crossentropy", "auc"], lr=0.01)
+                 l2_reg_embedding=0, dnn_use_bn=True, dnn_dropout=0.1, device=device)
+    #model.load_state_dict(torch.load('dssm.model'))
+    model.compile("adam", "binary_crossentropy",
+                  metrics=["binary_crossentropy", "auc"], lr=0.001)
     model.fit(train_model_input, train[target].values,
               batch_size=32, epochs=10, validation_split=0.1, verbose=1)
 
