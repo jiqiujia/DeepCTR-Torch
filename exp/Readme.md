@@ -7,6 +7,12 @@ nohup python run_classification_10038.py \
 ```
 
 ```bash
+python get_embed_dims.py "../../data/pctr/10038/p_20191226/part*" \
+../../data/pctr/10038/p_20191226.txt \
+../../data/pctr/10038/1226_header_dims.txt
+```
+
+```bash
 nohup python run_classification_10038_v2.py \
 --data_file "../../data/pctr/10038/p_20191226/train_*" \
 --val_file ../../data/pctr/10038/p_20191226/val \

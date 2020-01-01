@@ -70,15 +70,15 @@ if __name__ == "__main__":
 
     shard_paths = glob.glob(args.data_file)
     train_dataset = MultiShardsCSVDataset(shard_paths, feat_idx, target_idx)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=2,
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=1,
                                   collate_fn=default_collate)
 
     val_dataset = MultiShardsCSVDataset([args.val_file], feat_idx, target_idx)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=2,
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=1,
                             collate_fn=default_collate)
 
     test_dataset = MultiShardsCSVDataset([args.test_file], feat_idx, target_idx)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=2,
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=1,
                              collate_fn=default_collate)
     # 4.Define Model,train,predict and evaluate
 

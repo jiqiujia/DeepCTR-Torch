@@ -454,6 +454,12 @@ class BaseModel(nn.Module):
         sparse_embedding_list = [embedding_dict[feat.embedding_name](
             X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()) for
             feat in sparse_feature_columns]
+        # sparse_embedding_list = []
+        # for feat in sparse_feature_columns:
+        #     print(feat)
+        #     sparse_embedding_list.append(embedding_dict[feat.embedding_name](
+        #     X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()))
+
         varlen_sparse_embedding_list = [embedding_dict[feat.embedding_name](
             X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()) for
             feat in varlen_sparse_feature_columns]
