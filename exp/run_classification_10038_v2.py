@@ -16,7 +16,6 @@ import argparse
 import collections
 import logging
 
-
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
@@ -28,6 +27,8 @@ if __name__ == "__main__":
     parser.add_argument("--label_col", type=str, default="clk")
     parser.add_argument("--header_file", type=str, required=True)
     parser.add_argument("--data_file", type=str, required=True)
+    parser.add_argument("--val_file", type=str, required=True)
+    parser.add_argument("--test_file", type=str, required=True)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--epoch_num", type=int, default=2)
     parser.add_argument("--embed_dim", type=int, required=True)
@@ -72,6 +73,13 @@ if __name__ == "__main__":
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=2,
                                   collate_fn=default_collate)
 
+    val_dataset = MultiShardsCSVDataset([args.val_file], feat_idx, target_idx)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=2,
+                            collate_fn=default_collate)
+
+    test_dataset = MultiShardsCSVDataset([args.test_file], feat_idx, target_idx)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=2,
+                             collate_fn=default_collate)
     # 4.Define Model,train,predict and evaluate
 
     device = 'cpu'
@@ -85,10 +93,12 @@ if __name__ == "__main__":
 
     model.compile("adagrad", "binary_crossentropy",
                   metrics=["binary_crossentropy", "auc"], lr=0.01)
-    model.fit(train_dataloader, None, sample_num=train_dataset.__len__(),
-              batch_size=args.batch_size, epochs=args.epoch_num, verbose=1)
+    model.fit_loader(train_dataloader, val_loader, sample_num=train_dataset.__len__(),
+                     batch_size=args.batch_size, epochs=args.epoch_num, verbose=1)
 
-    # pred_ans = model.predict(test_model_input, 256)
-    # logger.info("")
-    # logger.info("test LogLoss {}".format(round(log_loss(test[target].values, pred_ans), 4)))
-    # logger.info("test AUC {}".format(round(roc_auc_score(test[target].values, pred_ans), 4)))
+    eval_result = model.evaluate_loader(test_loader, 256)
+    eval_str = ""
+    for name, result in eval_result.items():
+        eval_str += " test_" + name + \
+                    ": {0: .4f}".format(result)
+    logger.info(eval_str)

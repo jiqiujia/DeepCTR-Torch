@@ -51,7 +51,7 @@ class Linear(nn.Module):
         if len(self.dense_feature_columns) > 0:
             self.weight = nn.Parameter(torch.Tensor(sum(fc.dimension for fc in self.dense_feature_columns), 1)).to(
                 device)
-            #torch.nn.init.normal_(self.weight, mean=0, std=init_std)
+            # torch.nn.init.normal_(self.weight, mean=0, std=init_std)
             torch.nn.init.xavier_normal_(self.weight)
 
     def forward(self, X):
@@ -244,7 +244,7 @@ class BaseModel(nn.Module):
                                 train_result[name].append(metric_fun(
                                     y.cpu().data.numpy(), y_pred.cpu().data.numpy()))
 
-                        if (index + 1) % (steps_per_epoch / 10) == 0:
+                        if (index + 1) % (steps_per_epoch / 10) == 0 and validation_split > 0:
                             logger.info('Epoch {}/{} with lr {}'.format(epoch + 1, epochs, scheduler.get_lr()))
 
                             eval_str = "s - loss: {0: .4f}".format(
@@ -286,14 +286,15 @@ class BaseModel(nn.Module):
                         eval_str += " - val_" + name + \
                                     ": {0: .4f}".format(result)
                 logger.info(eval_str)
+                model.train()
 
-    def fit(self, train_loader,
-            val_loader,
-            batch_size,
-            sample_num,
-            epochs=1,
-            verbose=1,
-            initial_epoch=0):
+    def fit_loader(self, train_loader,
+                   val_loader,
+                   batch_size,
+                   sample_num,
+                   epochs=1,
+                   verbose=1,
+                   initial_epoch=0):
 
         loss_func = self.loss_func
         optim = self.optim
@@ -335,6 +336,25 @@ class BaseModel(nn.Module):
                                 train_result[name] = []
                             train_result[name].append(metric_fun(
                                 y.cpu().data.numpy(), y_pred.cpu().data.numpy()))
+
+                    if (index + 1) % (steps_per_epoch / 10) == 0 and val_loader is not None:
+                        logger.info('Epoch {}/{} with lr {}'.format(epoch + 1, epochs, scheduler.get_lr()))
+
+                        eval_str = "s - loss: {0: .4f}".format(
+                            total_loss_epoch / steps_per_epoch)
+
+                        for name, result in train_result.items():
+                            eval_str += " - " + name + \
+                                        ": {0: .4f}".format(np.sum(result) / steps_per_epoch)
+                        eval_result = self.evaluate_loader(val_loader, batch_size)
+                        eval_str = ""
+                        for name, result in eval_result.items():
+                            eval_str += " - val_" + name + \
+                                        ": {0: .4f}".format(result)
+                        logger.info(eval_str)
+
+                        torch.save(model.state_dict(), 'dssm.model')
+                        model.train()
                 epoch_time = int(time.time() - start_time)
                 if verbose > 0:
                     logger.info('Epoch {}/{} with lr {}'.format(epoch + 1, epochs, scheduler.get_lr()))
@@ -346,13 +366,14 @@ class BaseModel(nn.Module):
                         eval_str += " - " + name + \
                                     ": {0: .4f}".format(np.sum(result) / steps_per_epoch)
 
-                    # if len(val_x) and len(val_y):
-                    #     eval_result = self.evaluate(val_x, val_y, batch_size)
-                    #
-                    #     for name, result in eval_result.items():
-                    #         eval_str += " - val_" + name + \
-                    #                     ": {0: .4f}".format(result)
+                    if val_loader is not None:
+                        eval_result = self.evaluate_loader(val_loader, batch_size)
+
+                        for name, result in eval_result.items():
+                            eval_str += " - val_" + name + \
+                                        ": {0: .4f}".format(result)
                     logger.info(eval_str)
+                    model.train()
 
     def evaluate(self, x, y, batch_size=256):
         """
@@ -363,6 +384,25 @@ class BaseModel(nn.Module):
         :return: Integer or `None`. Number of samples per evaluation step. If unspecified, `batch_size` will default to 256.
         """
         pred_ans = self.predict(x, batch_size)
+        eval_result = {}
+        for name, metric_fun in self.metrics.items():
+            eval_result[name] = metric_fun(y, pred_ans)
+        return eval_result
+
+    def evaluate_loader(self, test_loader, batch_size=256):
+        pred_ans = []
+        y = []
+        model = self.eval()
+        with torch.no_grad():
+            for index, (x_test, y_test) in enumerate(test_loader):
+                x = x_test.to(self.device).float()
+                # y = y_test.to(self.device).float()
+
+                y_pred = model(x).cpu().data.numpy()  # .squeeze()
+                pred_ans.append(y_pred)
+                y.append(y_test.cpu().data.numpy())
+        pred_ans = np.concatenate(pred_ans)
+        y = np.concatenate(y)
         eval_result = {}
         for name, metric_fun in self.metrics.items():
             eval_result[name] = metric_fun(y, pred_ans)

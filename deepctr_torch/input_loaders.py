@@ -3,6 +3,12 @@ import io
 from torch.utils.data import Dataset
 import numpy as np
 
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class MultiShardsCSVDataset(Dataset):
     def __init__(self, shard_paths, feat_idxes, target_idx):
@@ -24,6 +30,7 @@ class MultiShardsCSVDataset(Dataset):
     def _get_cur_dataset(self, shard_idx):
         if shard_idx != self.cur_shard_idx:
             res = []
+            logger.info('loading shard {}'.format(self.shard_paths[shard_idx]))
             with io.open(self.shard_paths[shard_idx], encoding='utf-8') as fin:
                 for line in fin:
                     line = line.strip()
@@ -42,6 +49,7 @@ class MultiShardsCSVDataset(Dataset):
                 index = index - len
             else:
                 shard_idx = i
+                break
 
         cur_dataset = self._get_cur_dataset(shard_idx)
         return cur_dataset[index]
