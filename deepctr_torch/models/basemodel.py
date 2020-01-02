@@ -244,7 +244,7 @@ class BaseModel(nn.Module):
                                 train_result[name].append(metric_fun(
                                     y.cpu().data.numpy(), y_pred.cpu().data.numpy()))
 
-                        if (index + 1) % (steps_per_epoch / 10) == 0 and validation_split > 0:
+                        if (index + 1) % (steps_per_epoch // 10) == 0 and validation_split > 0:
                             logger.info('Epoch {}/{} with lr {}'.format(epoch + 1, epochs, scheduler.get_lr()))
 
                             eval_str = "s - loss: {0: .4f}".format(
@@ -337,7 +337,7 @@ class BaseModel(nn.Module):
                             train_result[name].append(metric_fun(
                                 y.cpu().data.numpy(), y_pred.cpu().data.numpy()))
 
-                    if (index + 1) % (steps_per_epoch / 10) == 0 and val_loader is not None:
+                    if (index + 1) % (steps_per_epoch // 10) == 0 and val_loader is not None:
                         logger.info('Epoch {}/{} with lr {}'.format(epoch + 1, epochs, scheduler.get_lr()))
 
                         eval_str = "s - loss: {0: .4f}".format(
