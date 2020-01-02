@@ -45,7 +45,7 @@ class MultiShardsCSVDataset(Dataset):
     def __getitem__(self, index):
         shard_idx = 0
         for i, len in enumerate(self.lens):
-            if index - len > 0:
+            if index - len >= 0:
                 index = index - len
             else:
                 shard_idx = i

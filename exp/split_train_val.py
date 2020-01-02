@@ -25,8 +25,8 @@ if __name__ == '__main__':
     if test_prop > 0:
         train, test = train_test_split(train, test_size=test_prop)
 
-    segs = np.linspace(0, len(train), shard_num + 1, dtype=np.int32)
-    for i in range(shard_num):
+    segs = np.linspace(0, len(train), shard_num + 2, dtype=np.int32)
+    for i in range(shard_num+1):
         with io.open(os.path.join(out_path, 'train_%d' % i), 'w+', encoding='utf-8') as fout:
             for line in train[segs[i]:segs[i+1]]:
                 fout.write(line)
