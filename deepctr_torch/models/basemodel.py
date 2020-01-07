@@ -26,7 +26,7 @@ from ..layers.utils import slice_arrays
 
 logger = logging.getLogger(__name__)
 
-
+# linear model don't take varlen_feats into consideration
 class Linear(nn.Module):
     def __init__(self, feature_columns, feature_index, init_std=0.0001, device='cpu'):
         super(Linear, self).__init__()
@@ -244,7 +244,7 @@ class BaseModel(nn.Module):
                                 train_result[name].append(metric_fun(
                                     y.cpu().data.numpy(), y_pred.cpu().data.numpy()))
 
-                        if (index + 1) % (steps_per_epoch // 10) == 0 and validation_split > 0:
+                        if steps_per_epoch > 1000 and (index + 1) % (steps_per_epoch // 10) == 0 and validation_split > 0:
                             logger.info('Epoch {}/{} with lr {}'.format(epoch + 1, epochs, scheduler.get_lr()))
 
                             eval_str = "s - loss: {0: .4f}".format(

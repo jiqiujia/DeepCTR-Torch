@@ -2,10 +2,6 @@
 import sys
 import io
 import glob
-import pandas as pd
-from sklearn.metrics import log_loss, roc_auc_score
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from deepctr_torch.models import *
 from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
 from deepctr_torch.input_loaders import MultiShardsCSVDataset
