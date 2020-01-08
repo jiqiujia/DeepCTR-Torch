@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import io
 from torch.utils.data import Dataset
+from deepctr_torch.inputs import SparseFeat, DenseFeat, VarLenSparseFeat
 import numpy as np
+import pandas as pd
 
 import logging
 
@@ -54,36 +56,57 @@ class MultiShardsCSVDataset(Dataset):
         cur_dataset = self._get_cur_dataset(shard_idx)
         return cur_dataset[index]
 
-class IterableDataset(Dataset):
-    def __iter__(self):
-        raise NotImplementedError
 
-
-class MultiShardsCSVIterableDataset(IterableDataset):
-    def __init__(self, shard_paths, target_idx):
+class MultiShardsCSVDatasetV2(Dataset):
+    def __init__(self, shard_paths, header, feat_cols, target_col):
         self.shard_paths = shard_paths
-        self.target_idx = target_idx
-        len = 0
-        for path in shard_paths:
+        self.header = header
+        self.feat_cols = feat_cols
+        self.target_col = target_col
+        lens = [0] * len(self.shard_paths)
+        for i, path in enumerate(shard_paths):
             for _ in io.open(path):
-                len += 1
-        self.length = len
+                lens[i] += 1
+        self.lens = lens
+        self.length = sum(self.lens)
+        self.cur_shard_idx = -1
+        self.cur_dataset = None
 
     def __len__(self):
         return self.length
 
-    def _iter_samples(self, path):
-        with io.open(path, encoding='utf-8') as fin:
-            for line in fin:
-                line = line.strip()
-                arr = line.split(',')
-                arr = [int(float(v)) for v in arr]
-                yield arr, arr[self.target_idx]
+    def _get_cur_dataset(self, shard_idx):
+        if shard_idx != self.cur_shard_idx:
+            logger.info('loading shard {}'.format(self.shard_paths[shard_idx]))
+            df = pd.read_csv(self.shard_paths[shard_idx], header=None, names=self.header,
+                             encoding='utf-8')
+            dataset = []
+            for _, row in df.iterrows():
+                feat = []
+                for col in self.feat_cols:
+                    if isinstance(col, SparseFeat):
+                        feat += [int(float(row[col.name]))]
+                    elif isinstance(col, DenseFeat):
+                        feat += [float(row[col.name])]
+                    elif isinstance(col, VarLenSparseFeat):
+                        idxes = [int(v) for v in row[col.name].split(" ")[:col.maxlen]]
+                        idxes += [0] * (col.maxlen - len(idxes))
+                        feat += idxes
+                    else:
+                        assert False
+                dataset.append((np.asarray(feat), row[self.target_col]))
+            self.cur_shard_idx = shard_idx
+            self.cur_dataset = dataset
+        return self.cur_dataset
 
-    def _iter_shards(self):
-        for path in self.shard_paths:
-            yield self._iter_samples(path)
+    def __getitem__(self, index):
+        shard_idx = 0
+        for i, len in enumerate(self.lens):
+            if index - len >= 0:
+                index = index - len
+            else:
+                shard_idx = i
+                break
 
-    def __iter__(self):
-        return self._iter_shards()
-
+        cur_dataset = self._get_cur_dataset(shard_idx)
+        return cur_dataset[index]

@@ -30,15 +30,15 @@ class DenseFeat(namedtuple('DenseFeat', ['name', 'dimension', 'dtype'])):
 
 class VarLenSparseFeat(namedtuple('VarLenFeat',
                                   ['name', 'dimension', 'maxlen', 'combiner', 'use_hash', 'dtype', 'embedding_name',
-                                   'embedding'])):
+                                   'embedding', 'padding_idx'])):
     __slots__ = ()
 
     def __new__(cls, name, dimension, maxlen, combiner="mean", use_hash=False, dtype="float32", embedding_name=None,
-                embedding=True):
+                embedding=True, padding_idx=0):
         if embedding_name is None:
             embedding_name = name
         return super(VarLenSparseFeat, cls).__new__(cls, name, dimension, maxlen, combiner, use_hash, dtype,
-                                                    embedding_name, embedding)
+                                                    embedding_name, embedding, padding_idx)
 
 
 def get_feature_names(feature_columns):

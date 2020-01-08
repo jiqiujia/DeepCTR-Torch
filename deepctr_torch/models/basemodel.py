@@ -460,11 +460,12 @@ class BaseModel(nn.Module):
         #     sparse_embedding_list.append(embedding_dict[feat.embedding_name](
         #     X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()))
 
-        varlen_sparse_embedding_list = [embedding_dict[feat.embedding_name](
-            X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()) for
-            feat in varlen_sparse_feature_columns]
-        varlen_sparse_embedding_list = list(
-            map(lambda x: x.unsqueeze(dim=1), varlen_sparse_embedding_list))
+        # fix embeddingbag padding_idx
+        varlen_sparse_embedding_list = [torch.mean(embedding_dict[feat.embedding_name](
+            X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()),
+            dim = 1, keepdim = True) for feat in varlen_sparse_feature_columns]
+        # varlen_sparse_embedding_list = list(
+        #     map(lambda x: x.unsqueeze(dim=1), varlen_sparse_embedding_list))
 
         dense_value_list = [X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]] for feat in
                             dense_feature_columns]
@@ -484,9 +485,10 @@ class BaseModel(nn.Module):
              sparse_feature_columns}
         )
 
+        # fix embeddingbag padding_idx
         for feat in varlen_sparse_feature_columns:
-            embedding_dict[feat.embedding_name] = nn.EmbeddingBag(
-                feat.dimension, embedding_size, sparse=sparse, mode=feat.combiner)
+            embedding_dict[feat.embedding_name] = nn.Embedding(feat.dimension, embedding_size,
+                                                               sparse=sparse, padding_idx=feat.padding_idx)
 
         for tensor in embedding_dict.values():
             nn.init.normal_(tensor.weight, mean=0, std=init_std)

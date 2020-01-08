@@ -18,7 +18,8 @@ if __name__ == '__main__':
     unique_vals = [0 for _ in range(len(header))]
     for path in data_paths:
         print(path)
-        df = pd.read_csv(path)
+        df = pd.read_csv(path, header=None, names=header, dtype={'wordIds': str})
+        df['wordIds'] = df['wordIds'].apply(lambda x: max([int(float(v)) for v in x.split(' ')]))
         maxs = df.max()
         for i, val in enumerate(maxs):
             unique_vals[i] = max(unique_vals[i], int(float(val)))

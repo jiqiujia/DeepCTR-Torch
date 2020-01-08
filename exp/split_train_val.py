@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 
 if __name__ == '__main__':
     shard_paths = glob.glob(sys.argv[1])
+    print(shard_paths)
     lines = []
     for path in shard_paths:
         with io.open(path, encoding='utf-8') as fin:
