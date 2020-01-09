@@ -77,3 +77,11 @@ class DSSM(BaseModel):
         y_pred = self.out(cosine_logit)
 
         return y_pred
+
+    def inference(self, X):
+        sparse_embedding_list, dense_value_list = self.input_from_feature_columns(X, self.query_dnn_feature_columns,
+                                                                                  self.embedding_dict)
+        dnn_input = combined_dnn_input(sparse_embedding_list, dense_value_list)
+
+        query_dnn_output = self.query_dnn(dnn_input)
+        return query_dnn_output

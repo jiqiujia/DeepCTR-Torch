@@ -130,6 +130,9 @@ class BaseModel(nn.Module):
         self.out = PredictionLayer(task, )
         self.to(device)
 
+    def inference(self, x):
+        pass
+
     def fit(self, x=None,
             y=None,
             batch_size=None,

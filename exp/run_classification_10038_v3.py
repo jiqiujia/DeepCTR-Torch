@@ -45,7 +45,7 @@ if __name__ == "__main__":
     match_varlen_feat_cols = args.match_varlen_feats.split(",") if args.match_varlen_feats is not None else []
 
     skip_columns = [args.label_col, 'adid', 'kadsidefeats_creativeidIndex', 'creativeid', 'xad_adinfo_tid',
-                    'kadsidefeats_adinfo_gdtadinfo_advertiseridIndex',
+                    'id', 'kadsidefeats_adinfo_gdtadinfo_advertiseridIndex',
                     'kadsidefeats_adinfo_gdtadinfo_bidpriceIndex'] + \
                    query_varlen_feat_cols + match_varlen_feat_cols
     feat_columns = list(columns)
