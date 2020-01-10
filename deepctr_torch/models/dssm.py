@@ -47,17 +47,18 @@ class DSSM(BaseModel):
                                    task=task, device=device)
 
         self.query_dnn_feature_columns = query_dnn_feature_columns
-        self.match_dnn_feature_columns = match_dnn_feature_columns
         self.query_dnn = DNN(self.compute_input_dim(self.query_dnn_feature_columns, embedding_size), dnn_hidden_units,
                              activation=dnn_activation, l2_reg=l2_reg_dnn, dropout_rate=dnn_dropout, use_bn=dnn_use_bn,
                              init_std=init_std, device=device)
-        self.match_dnn = DNN(self.compute_input_dim(self.match_dnn_feature_columns, embedding_size), dnn_hidden_units,
-                             activation=dnn_activation, l2_reg=l2_reg_dnn, dropout_rate=dnn_dropout, use_bn=dnn_use_bn,
-                             init_std=init_std, device=device)
+        if match_dnn_feature_columns is not None and len(match_dnn_feature_columns) > 0:
+            self.match_dnn_feature_columns = match_dnn_feature_columns
+            self.match_dnn = DNN(self.compute_input_dim(self.match_dnn_feature_columns, embedding_size), dnn_hidden_units,
+                                 activation=dnn_activation, l2_reg=l2_reg_dnn, dropout_rate=dnn_dropout, use_bn=dnn_use_bn,
+                                 init_std=init_std, device=device)
+            self.add_regularization_loss(
+                filter(lambda x: 'weight' in x[0] and 'bn' not in x[0], self.match_dnn.named_parameters()), l2_reg_dnn)
         self.add_regularization_loss(
             filter(lambda x: 'weight' in x[0] and 'bn' not in x[0], self.query_dnn.named_parameters()), l2_reg_dnn)
-        self.add_regularization_loss(
-            filter(lambda x: 'weight' in x[0] and 'bn' not in x[0], self.match_dnn.named_parameters()), l2_reg_dnn)
 
         self.to(device)
 
@@ -78,7 +79,7 @@ class DSSM(BaseModel):
 
         return y_pred
 
-    def inference(self, X):
+    def forward_inference(self, X):
         sparse_embedding_list, dense_value_list = self.input_from_feature_columns(X, self.query_dnn_feature_columns,
                                                                                   self.embedding_dict)
         dnn_input = combined_dnn_input(sparse_embedding_list, dense_value_list)

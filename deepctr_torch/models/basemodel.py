@@ -130,8 +130,21 @@ class BaseModel(nn.Module):
         self.out = PredictionLayer(task, )
         self.to(device)
 
-    def inference(self, x):
+    def forward_inference(self, x):
         pass
+
+    def inference(self, data_loader):
+        model = self.eval()
+        feats = []
+        ids = []
+        with torch.no_grad():
+            with tqdm(enumerate(data_loader), ascii=True) as t:
+                for index, (x_train, id) in t:
+                    x = x_train.to(self.device).float()
+                    embed = model.forward_inference(x).cpu().numpy()
+                    feats.append(embed)
+                    ids.append(id.cpu().numpy())
+        return np.concatenate(feats), np.concatenate(ids)
 
     def fit(self, x=None,
             y=None,

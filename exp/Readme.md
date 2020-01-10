@@ -1,5 +1,10 @@
 ### 10038
 
+```bash
+python split_train_val.py "../../data/pctr/10038/all/p_20200106/part*" \
+ 0.1 0.1 50 5 ../../data/pctr/10038/all/p_20200106/
+```
+
 #### v1
 ```bash
 nohup python run_classification_10038.py \
@@ -27,10 +32,10 @@ nohup python run_classification_10038_v2.py \
 ```bash
 nohup python run_classification_10038_v3.py \
 --data_file "../../data/pctr/10038/all/p_20200106/train_*" \
---val_file ../../data/pctr/10038/all/p_20200106/val \
---test_file ../../data/pctr/10038/all/p_20200106/test \
+--val_file "../../data/pctr/10038/all/p_20200106/val*" \
+--test_file "../../data/pctr/10038/all/p_20200106/test*" \
 --col_dim_file ../../data/pctr/10038/all/0106_header_dims.txt \
 --header_file ../../data/pctr/10038/all/p_20200106.txt \
---label_col clk --embed_dim 32 --batch_size 128 \
+--label_col clk --embed_dim 32 --batch_size 256 \
 --query_varlen_feats wordIds --use_cuda 2>&1 > log_v3.txt &
 ```

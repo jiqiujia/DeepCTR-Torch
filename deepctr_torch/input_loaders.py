@@ -56,13 +56,14 @@ class MultiShardsCSVDataset(Dataset):
         cur_dataset = self._get_cur_dataset(shard_idx)
         return cur_dataset[index]
 
-
+# support varlen feature; don't support multiprocessing
 class MultiShardsCSVDatasetV2(Dataset):
-    def __init__(self, shard_paths, header, feat_cols, target_col):
+    def __init__(self, shard_paths, header, feat_cols, target_col, phase='train'):
         self.shard_paths = shard_paths
         self.header = header
         self.feat_cols = feat_cols
         self.target_col = target_col
+        self.phase = phase
         lens = [0] * len(self.shard_paths)
         for i, path in enumerate(shard_paths):
             for _ in io.open(path):
@@ -85,16 +86,23 @@ class MultiShardsCSVDatasetV2(Dataset):
                 feat = []
                 for col in self.feat_cols:
                     if isinstance(col, SparseFeat):
-                        feat += [int(float(row[col.name]))]
+                        tmp_val = int(float(row[col.name]))
+                        if tmp_val >= col.dimension:
+                            tmp_val = col.dimension - 1
+                        feat += [tmp_val]
                     elif isinstance(col, DenseFeat):
                         feat += [float(row[col.name])]
                     elif isinstance(col, VarLenSparseFeat):
                         idxes = [int(v) for v in row[col.name].split(" ")[:col.maxlen]]
                         idxes += [0] * (col.maxlen - len(idxes))
+                        idxes = [val if val < col.dimension else col.dimension - 1 for val in idxes]
                         feat += idxes
                     else:
                         assert False
-                dataset.append((np.asarray(feat), row[self.target_col]))
+                if self.target_col is not None:
+                    dataset.append((np.asarray(feat), row[self.target_col]))
+                else:
+                    dataset.append(np.asarray(feat))
             self.cur_shard_idx = shard_idx
             self.cur_dataset = dataset
         return self.cur_dataset
