@@ -17,6 +17,7 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+### 注意线上线下配置的一致性，如col_dim_file等
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -33,6 +34,7 @@ if __name__ == "__main__":
     parser.add_argument("--match_varlen_feats", type=str, default=None,
                         help="allow multiple varlen feats, separated by comma")
     parser.add_argument("--varlen_feat_maxlen", type=int, default=20)
+    parser.add_argument("--out_path", type=str, required=True)
     args = parser.parse_args()
 
     logger.info("loading data...")
@@ -87,5 +89,20 @@ if __name__ == "__main__":
                  embedding_size=args.embed_dim, dnn_dropout=0.1,
                  l2_reg_embedding=0, dnn_use_bn=True, device=device)
 
+    # only load part of parameters
+    pretrained_dict = torch.load(args.model, map_location=device)
+    model_dict = model.state_dict()
+    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+    model_dict.update(pretrained_dict)
+    model.load_state_dict(model_dict)
+
     feats, ids = model.inference(train_dataloader)
     print(feats.shape, ids.shape)
+
+    with io.open(args.out_path, 'w+', encoding='utf-8') as fout:
+        oov_cnt = 0
+        for feat, id in zip(feats, ids):
+            if id < 0:
+                oov_cnt += 1
+            fout.write(str(id) + ' '.join([str(val) for val in feat]))
+        print(oov_cnt)

@@ -58,12 +58,13 @@ class MultiShardsCSVDataset(Dataset):
 
 # support varlen feature; don't support multiprocessing
 class MultiShardsCSVDatasetV2(Dataset):
-    def __init__(self, shard_paths, header, feat_cols, target_col, phase='train'):
+    def __init__(self, shard_paths, header, feat_cols, target_col, phase='train', oov=-1):
         self.shard_paths = shard_paths
         self.header = header
         self.feat_cols = feat_cols
         self.target_col = target_col
         self.phase = phase
+        self.oov = oov
         lens = [0] * len(self.shard_paths)
         for i, path in enumerate(shard_paths):
             for _ in io.open(path):
@@ -84,11 +85,18 @@ class MultiShardsCSVDatasetV2(Dataset):
             dataset = []
             for _, row in df.iterrows():
                 feat = []
+                skip = False
                 for col in self.feat_cols:
                     if isinstance(col, SparseFeat):
                         tmp_val = int(float(row[col.name]))
                         if tmp_val >= col.dimension:
-                            tmp_val = col.dimension - 1
+                            if self.oov > 0:
+                                tmp_val = col.dimension - 1
+                            elif self.oov < 0:
+                                skip = True
+                                tmp_val = 0
+                            else:
+                                tmp_val = 0
                         feat += [tmp_val]
                     elif isinstance(col, DenseFeat):
                         feat += [float(row[col.name])]
@@ -99,8 +107,12 @@ class MultiShardsCSVDatasetV2(Dataset):
                         feat += idxes
                     else:
                         assert False
+
                 if self.target_col is not None:
-                    dataset.append((np.asarray(feat), row[self.target_col]))
+                    if skip:
+                        dataset.append((np.asarray(feat), self.oov))
+                    else:
+                        dataset.append((np.asarray(feat), row[self.target_col]))
                 else:
                     dataset.append(np.asarray(feat))
             self.cur_shard_idx = shard_idx

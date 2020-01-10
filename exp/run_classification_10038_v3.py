@@ -106,8 +106,6 @@ if __name__ == "__main__":
                  embedding_size=args.embed_dim, dnn_dropout=0.1,
                  l2_reg_embedding=0, dnn_use_bn=True, device=device)
 
-    model.load_state_dict(torch.load(args.model))
-
     model.compile("adagrad", "binary_crossentropy",
                   metrics=["binary_crossentropy", "auc"], lr=0.01)
     model.fit_loader(train_dataloader, val_loader, sample_num=train_dataset.__len__(),
