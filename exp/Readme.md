@@ -36,6 +36,6 @@ nohup python run_classification_10038_v3.py \
 --test_file "../../data/pctr/10038/all/p_20200106/test*" \
 --col_dim_file ../../data/pctr/10038/all/0106_header_dims.txt \
 --header_file ../../data/pctr/10038/all/p_20200106.txt \
---label_col clk --embed_dim 32 --batch_size 256 \
---query_varlen_feats wordIds --use_cuda 2>&1 > log_v3.txt &
+--label_col clk --embed_dim 32 --batch_size 256 --epoch_num 2 \
+--query_varlen_feats wordIds --use_cuda 2>&1 > log_v3_2.txt &
 ```

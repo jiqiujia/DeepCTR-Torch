@@ -320,6 +320,7 @@ class BaseModel(nn.Module):
         scheduler = CosineAnnealingLR(optim, epochs * steps_per_epoch, eta_min=1e-6)
         logger.info("Train on {} samples, {} steps per epoch".format(
             sample_num, steps_per_epoch))
+        best_val_auc = 0
         for epoch in range(initial_epoch, epochs):
             model = self.train()
             start_time = time.time()
@@ -367,6 +368,10 @@ class BaseModel(nn.Module):
                         for name, result in eval_result.items():
                             eval_str += " - val_" + name + \
                                         ": {0: .4f}".format(result)
+                            if name == 'auc':
+                                if result > best_val_auc:
+                                    best_val_auc = result
+                                    torch.save(model.state_dict(), "best.model")
                         logger.info(eval_str)
 
                         torch.save(model.state_dict(), 'dssm.model')

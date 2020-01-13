@@ -4,6 +4,8 @@ from torch.utils.data import Dataset
 from deepctr_torch.inputs import SparseFeat, DenseFeat, VarLenSparseFeat
 import numpy as np
 import pandas as pd
+import dask.dataframe
+import csv
 
 import logging
 
@@ -80,10 +82,12 @@ class MultiShardsCSVDatasetV2(Dataset):
     def _get_cur_dataset(self, shard_idx):
         if shard_idx != self.cur_shard_idx:
             logger.info('loading shard {}'.format(self.shard_paths[shard_idx]))
-            df = pd.read_csv(self.shard_paths[shard_idx], header=None, names=self.header,
-                             encoding='utf-8')
+            # df = dask.dataframe.read_csv(self.shard_paths[shard_idx], header=None, names=self.header,
+            #                  encoding='utf-8')
+            df = csv.DictReader(io.open(self.shard_paths[shard_idx], encoding='utf-8'), fieldnames=self.header)
             dataset = []
-            for _, row in df.iterrows():
+            # for _, row in df.iterrows():
+            for row in df:
                 feat = []
                 skip = False
                 for col in self.feat_cols:
@@ -112,7 +116,7 @@ class MultiShardsCSVDatasetV2(Dataset):
                     if skip:
                         dataset.append((np.asarray(feat), self.oov))
                     else:
-                        dataset.append((np.asarray(feat), row[self.target_col]))
+                        dataset.append((np.asarray(feat), float(row[self.target_col])))
                 else:
                     dataset.append(np.asarray(feat))
             self.cur_shard_idx = shard_idx

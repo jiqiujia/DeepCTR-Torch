@@ -67,7 +67,8 @@ if __name__ == "__main__":
                                  for feat in feat_columns if feat.startswith('kad') or feat.startswith("xad")]
     query_varlen_feature_columns = [VarLenSparseFeat(feat, col_dim_dict[feat], args.varlen_feat_maxlen, 'mean')
                                     for feat in query_varlen_feat_cols]
-    query_dnn_feature_columns = query_fixlen_feature_columns + query_varlen_feature_columns
+    #query_dnn_feature_columns = query_fixlen_feature_columns + query_varlen_feature_columns
+    query_dnn_feature_columns = query_varlen_feature_columns
     match_fixlen_feature_columns = [SparseFeat(feat, col_dim_dict[feat])
                                     for feat in feat_columns if not feat.startswith('kad') and not feat.startswith("xad")]
     match_varlen_feature_columns = [VarLenSparseFeat(feat, col_dim_dict[feat], args.varlen_feat_maxlen, 'mean')
