@@ -14,7 +14,7 @@ python split_train_val.py "../../data/pctr/10038/all/p_20200106/part*" \
 #### 获取每一列特征的维度
 ```bash
 python get_embed_dims.py "../../data/pctr/10038/p_20191226/part*" \
-../../data/pctr/10038/p_20191226.txt \
+../../data/pctr/10038/p_20191226.txt var_len_cols1,var_len_cols2 \
 ../../data/pctr/10038/1226_header_dims.txt
 ```
 
@@ -25,7 +25,6 @@ nohup python run_classification_10038.py \
 --header_file ../../data/pctr/10038/p_20191226.txt \
 --label_col clk --embed_dim 32 --batch_size 64 --use_cuda 2>&1 > log.txt &
 ```
-
 #### v2
 ```bash
 nohup python run_classification_10038_v2.py \
