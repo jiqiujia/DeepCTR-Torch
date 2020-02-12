@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     skip_columns = [args.key_col, 'adid', 'kadsidefeats_creativeidIndex', 'creativeid', 'xad_adinfo_tid',
                     'id', 'kadsidefeats_adinfo_gdtadinfo_advertiseridIndex',
-                    'kadsidefeats_adinfo_gdtadinfo_bidpriceIndex'] + \
+                    'kadsidefeats_adinfo_gdtadinfo_bidpriceIndex', 'kadpage_image_profile_similarclassidIds'] + \
                    query_varlen_feat_cols + match_varlen_feat_cols
     feat_columns = list(columns)
     for col in skip_columns:
@@ -64,18 +64,19 @@ if __name__ == "__main__":
             col_dim_dict[arr[0]] = int(arr[1])
 
     query_fixlen_feature_columns = [SparseFeat(feat, col_dim_dict[feat])
-                                 for feat in feat_columns if feat.startswith('kad') or feat.startswith("xad")]
+                                    for feat in feat_columns if feat.startswith('kad') or feat.startswith("xad")]
     query_varlen_feature_columns = [VarLenSparseFeat(feat, col_dim_dict[feat], args.varlen_feat_maxlen, 'mean')
                                     for feat in query_varlen_feat_cols]
     query_dnn_feature_columns = query_fixlen_feature_columns + query_varlen_feature_columns
 
     query_feature_names = get_feature_names(query_dnn_feature_columns)
+    print(query_feature_names)
 
     # 3.generate input data for model
 
     shard_paths = glob.glob(args.data_file)
     train_dataset = MultiShardsCSVDatasetV2(shard_paths, columns, query_dnn_feature_columns, args.key_col, 'test')
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=1,
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=0,
                                   collate_fn=default_collate)
 
     # 4.Define Model,train,predict and evaluate
@@ -104,5 +105,5 @@ if __name__ == "__main__":
         for feat, id in zip(feats, ids):
             if id < 0:
                 oov_cnt += 1
-            fout.write(str(id) + ' '.join([str(val) for val in feat]))
+            fout.write(str(int(id)) + ' ' + ' '.join([str(val) for val in feat]) + '\n')
         print(oov_cnt)

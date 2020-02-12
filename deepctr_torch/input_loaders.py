@@ -116,7 +116,7 @@ class MultiShardsCSVDatasetV2(Dataset):
                     if skip:
                         dataset.append((np.asarray(feat), self.oov))
                     else:
-                        dataset.append((np.asarray(feat), float(row[self.target_col])))
+                        dataset.append((np.asarray(feat), 1.0 if float(row[self.target_col]) > 0 else 0.0))
                 else:
                     dataset.append(np.asarray(feat))
             self.cur_shard_idx = shard_idx
