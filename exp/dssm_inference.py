@@ -25,10 +25,11 @@ if __name__ == "__main__":
     parser.add_argument("--header_file", type=str, required=True)
     parser.add_argument("--data_file", type=str, required=True)
     parser.add_argument("--model", type=str, required=True)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--use_cuda", action='store_true')
     parser.add_argument("--embed_dim", type=int, required=True)
     parser.add_argument("--col_dim_file", type=str, required=True)
+    parser.add_argument("--drop_out", type=float, required=True)
     parser.add_argument("--query_varlen_feats", type=str, default=None,
                         help="allow multiple varlen feats, separated by comma")
     parser.add_argument("--match_varlen_feats", type=str, default=None,
@@ -87,7 +88,7 @@ if __name__ == "__main__":
         device = 'cuda:0'
 
     model = DSSM(query_dnn_feature_columns, [], task='binary',
-                 embedding_size=args.embed_dim, dnn_dropout=0.1,
+                 embedding_size=args.embed_dim, dnn_dropout=args.drop_out,
                  l2_reg_embedding=0, dnn_use_bn=True, device=device)
 
     # only load part of parameters
