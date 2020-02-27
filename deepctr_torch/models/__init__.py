@@ -11,4 +11,5 @@ from .onn import ONN
 from .pnn import PNN
 from .ccpm import CCPM
 from .dssm import DSSM
+from .cdssm import CDSSM
 NFFM = ONN

@@ -14,6 +14,7 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class MultiShardsCSVDataset(Dataset):
     def __init__(self, shard_paths, feat_idxes, target_idx):
         self.shard_paths = shard_paths
@@ -57,6 +58,7 @@ class MultiShardsCSVDataset(Dataset):
 
         cur_dataset = self._get_cur_dataset(shard_idx)
         return cur_dataset[index]
+
 
 # support varlen feature; don't support multiprocessing
 class MultiShardsCSVDatasetV2(Dataset):
@@ -116,7 +118,10 @@ class MultiShardsCSVDatasetV2(Dataset):
                     if skip:
                         dataset.append((np.asarray(feat), self.oov))
                     else:
-                        dataset.append((np.asarray(feat), 1.0 if float(row[self.target_col]) > 0 else 0.0))
+                        if self.phase!='test':
+                            dataset.append((np.asarray(feat), 1.0 if float(row[self.target_col])>0 else 0.0))
+                        else:
+                            dataset.append((np.asarray(feat), float(row[self.target_col])))
                 else:
                     dataset.append(np.asarray(feat))
             self.cur_shard_idx = shard_idx
