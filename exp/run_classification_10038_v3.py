@@ -44,8 +44,8 @@ if __name__ == "__main__":
     query_varlen_feat_cols = args.query_varlen_feats.split(",") if args.query_varlen_feats is not None else []
     match_varlen_feat_cols = args.match_varlen_feats.split(",") if args.match_varlen_feats is not None else []
 
-    skip_columns = [args.label_col, 'adid', 'kadsidefeats_creativeidIndex', 'creativeid', 'xad_adinfo_tid',
-                    'keyid', 'adgroupid', 'id', 'kadsidefeats_adinfo_gdtadinfo_advertiseridIndex',
+    skip_columns = [args.label_col, 'adid', 'keyid', 'adgroupid', 'kadsidefeats_creativeidIndex', 'creativeid', 'xad_adinfo_tid',
+                    'id', 'kadsidefeats_adinfo_gdtadinfo_advertiseridIndex', 'kadpage_image_profile_similarclassidIds',
                     'kadsidefeats_adinfo_gdtadinfo_bidpriceIndex'] + \
                    query_varlen_feat_cols + match_varlen_feat_cols
     feat_columns = list(columns)
@@ -70,7 +70,8 @@ if __name__ == "__main__":
     #query_dnn_feature_columns = query_fixlen_feature_columns + query_varlen_feature_columns
     query_dnn_feature_columns = query_varlen_feature_columns
     match_fixlen_feature_columns = [SparseFeat(feat, col_dim_dict[feat])
-                                    for feat in feat_columns if not feat.startswith('kad') and not feat.startswith("xad")]
+                                    for feat in feat_columns if not feat.startswith('kad')
+                                    and not feat.startswith("xad") and feat.startswith('kuser')]
     match_varlen_feature_columns = [VarLenSparseFeat(feat, col_dim_dict[feat], args.varlen_feat_maxlen, 'mean')
                                     for feat in match_varlen_feat_cols]
     match_dnn_feature_columns = match_fixlen_feature_columns + match_varlen_feature_columns
@@ -87,7 +88,7 @@ if __name__ == "__main__":
     shard_paths = glob.glob(args.data_file)
     train_dataset = MultiShardsCSVDatasetV2(shard_paths, columns, all_feat_cols, args.label_col)
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=0,
-                                  collate_fn=default_collate)
+                                  collate_fn=default_collate, drop_last=True)
 
     val_dataset = MultiShardsCSVDatasetV2(glob.glob(args.val_file), columns, all_feat_cols, args.label_col)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=0,
@@ -104,7 +105,7 @@ if __name__ == "__main__":
         device = 'cuda:0'
 
     model = DSSM(query_dnn_feature_columns, match_dnn_feature_columns, task='binary',
-                 embedding_size=args.embed_dim, dnn_dropout=0.1,
+                 embedding_size=args.embed_dim, dnn_dropout=0,
                  l2_reg_embedding=0, dnn_use_bn=True, device=device)
 
     model.compile("adagrad", "binary_crossentropy",
