@@ -74,7 +74,7 @@ class DNN(nn.Module):
 
 class TextCNN(nn.Module):
     def __init__(self, embedding_dimension, vocabulary_size, class_num, filter_num=100,
-                 filter_sizes=[3,3,3], dropout=0):
+                 filter_sizes=[3,4,5], dropout=0, device='cpu'):
         super(TextCNN, self).__init__()
         chanel_num = 1
 
@@ -89,7 +89,9 @@ class TextCNN(nn.Module):
         self.convs = nn.ModuleList(
             [nn.Conv2d(chanel_num, filter_num, (size, embedding_dimension)) for size in filter_sizes])
         self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(len(filter_sizes) * filter_nums[-1], class_num)
+        self.fc = nn.Linear(len(filter_sizes) * filter_num, class_num)
+
+        self.to(device)
 
     def forward(self, x):
         # if self.embedding2:

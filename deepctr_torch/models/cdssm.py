@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from .basemodel import BaseModel
 from ..inputs import combined_dnn_input
 from ..layers import DNN, TextCNN
+from ..inputs import build_input_features, SparseFeat, DenseFeat, VarLenSparseFeat
 
 
 class CDSSM(BaseModel):
@@ -34,7 +35,7 @@ class CDSSM(BaseModel):
                  dnn_hidden_units=(300, 300, 128),
                  l2_reg_embedding=1e-5, l2_reg_dnn=0, init_std=0.0001, seed=1024, dnn_dropout=0, dnn_activation=F.relu,
                  dnn_use_bn=False, task='binary', device='cpu'):
-        super(DSSM, self).__init__([], query_dnn_feature_columns + match_dnn_feature_columns,
+        super(CDSSM, self).__init__([], query_dnn_feature_columns + match_dnn_feature_columns,
                                    embedding_size=embedding_size,
                                    dnn_hidden_units=dnn_hidden_units,
                                    l2_reg_embedding=l2_reg_embedding, l2_reg_dnn=l2_reg_dnn, init_std=init_std,
@@ -43,9 +44,10 @@ class CDSSM(BaseModel):
                                    task=task, device=device)
 
         self.query_dnn_feature_columns = query_dnn_feature_columns
-        varlen_sparse_feature_columns = list(
-            filter(lambda x: isinstance(x, VarLenSparseFeat), feature_columns)) if self.query_dnn_feature_columns else []
-        self.textCNNs = {feat: TextCNN(feat.dimension, embedding_size, dnn_hidden_units[-1]) for feat in varlen_sparse_feature_columns}
+        self.query_varlen_sparse_feature_columns = list(
+            filter(lambda x: isinstance(x, VarLenSparseFeat), self.query_dnn_feature_columns)) if self.query_dnn_feature_columns else []
+        self.textCNNs = {feat: TextCNN(embedding_size, feat.dimension, dnn_hidden_units[-1], device=device)
+                         for feat in self.query_varlen_sparse_feature_columns}
 
         if match_dnn_feature_columns is not None and len(match_dnn_feature_columns) > 0:
             self.match_dnn_feature_columns = match_dnn_feature_columns
@@ -54,16 +56,12 @@ class CDSSM(BaseModel):
                                  init_std=init_std, device=device)
             self.add_regularization_loss(
                 filter(lambda x: 'weight' in x[0] and 'bn' not in x[0], self.match_dnn.named_parameters()), l2_reg_dnn)
-        self.add_regularization_loss(
-            filter(lambda x: 'weight' in x[0] and 'bn' not in x[0], self.query_dnn.named_parameters()), l2_reg_dnn)
 
         self.to(device)
 
     def forward(self, X):
-        varlen_sparse_feature_columns = list(
-            filter(lambda x: isinstance(x, VarLenSparseFeat), feature_columns)) if feature_columns else []
         cnn_feats = []
-        for feat in varlen_sparse_feature_columns:
+        for feat in self.query_varlen_sparse_feature_columns:
             cnn_feats.append(self.textCNNs[feat](X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()))
         query_cnn_feats = torch.mean(torch.stack(cnn_feats, 1), dim=1)
 
