@@ -513,7 +513,7 @@ class BaseModel(nn.Module):
 
         for tensor in embedding_dict.values():
             #nn.init.normal_(tensor.weight, mean=0, std=init_std)
-            nn.init.kaiming_normal_(tensor)
+            nn.init.kaiming_normal_(tensor.weight)
 
         return embedding_dict
 
