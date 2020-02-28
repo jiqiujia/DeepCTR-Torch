@@ -51,7 +51,8 @@ class DNN(nn.Module):
                 [nn.BatchNorm1d(hidden_units[i + 1]) for i in range(len(hidden_units) - 1)])
         for name, tensor in self.linears.named_parameters():
             if 'weight' in name:
-                nn.init.normal_(tensor, mean=0, std=init_std)
+                #nn.init.normal_(tensor, mean=0, std=init_std)
+                nn.init.kaiming_normal_(tensor)
 
         self.to(device)
 
@@ -90,6 +91,11 @@ class TextCNN(nn.Module):
             [nn.Conv2d(chanel_num, filter_num, (size, embedding_dimension)) for size in filter_sizes])
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(len(filter_sizes) * filter_num, class_num)
+
+        for name, tensor in self.named_parameters():
+            if 'weight' in name:
+                #nn.init.normal_(tensor, mean=0, std=init_std)
+                nn.init.kaiming_normal_(tensor)
 
         self.to(device)
 

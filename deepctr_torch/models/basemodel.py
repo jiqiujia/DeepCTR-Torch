@@ -512,7 +512,8 @@ class BaseModel(nn.Module):
                                                                sparse=sparse, padding_idx=feat.padding_idx)
 
         for tensor in embedding_dict.values():
-            nn.init.normal_(tensor.weight, mean=0, std=init_std)
+            #nn.init.normal_(tensor.weight, mean=0, std=init_std)
+            nn.init.kaiming_normal_(tensor)
 
         return embedding_dict
 

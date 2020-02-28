@@ -17,7 +17,7 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-torch.backends.cudnn.enabled=False
+#torch.backends.cudnn.enabled=False
 
 
 if __name__ == "__main__":

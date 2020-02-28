@@ -77,9 +77,9 @@ class CDSSM(BaseModel):
         return y_pred
 
     def forward_inference(self, X):
-        sparse_embedding_list, dense_value_list = self.input_from_feature_columns(X, self.query_dnn_feature_columns,
-                                                                                  self.embedding_dict)
-        dnn_input = combined_dnn_input(sparse_embedding_list, dense_value_list)
-
-        query_dnn_output = self.query_dnn(dnn_input)
-        return query_dnn_output
+        cnn_feats = []
+        for feat in self.query_varlen_sparse_feature_columns:
+            cnn_feats.append(
+                self.textCNNs[feat](X[:, self.feature_index[feat.name][0]:self.feature_index[feat.name][1]].long()))
+        query_cnn_feats = torch.mean(torch.stack(cnn_feats, 1), dim=1)
+        return query_cnn_feats
