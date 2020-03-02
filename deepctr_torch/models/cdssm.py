@@ -46,7 +46,7 @@ class CDSSM(BaseModel):
         self.query_dnn_feature_columns = query_dnn_feature_columns
         self.query_varlen_sparse_feature_columns = list(
             filter(lambda x: isinstance(x, VarLenSparseFeat), self.query_dnn_feature_columns)) if self.query_dnn_feature_columns else []
-        self.textCNNs = {feat: TextCNN(embedding_size, feat.dimension, dnn_hidden_units[-1], device=device)
+        self.textCNNs = {feat: TextCNN(embedding_size, feat.dimension, dnn_hidden_units[2:], device=device)
                          for feat in self.query_varlen_sparse_feature_columns}
 
         if match_dnn_feature_columns is not None and len(match_dnn_feature_columns) > 0:

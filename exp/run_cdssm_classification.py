@@ -111,8 +111,8 @@ if __name__ == "__main__":
                  embedding_size=args.embed_dim, dnn_dropout=0,
                  l2_reg_embedding=0, dnn_use_bn=True, device=device)
 
-    model.compile("adagrad", "binary_crossentropy",
-                  metrics=["binary_crossentropy", "auc"], lr=0.01)
+    model.compile("adam", "binary_crossentropy",
+                  metrics=["binary_crossentropy", "auc"], lr=0.001)
     model.fit_loader(train_dataloader, val_loader, sample_num=train_dataset.__len__(),
                      batch_size=args.batch_size, epochs=args.epoch_num, verbose=1)
 

@@ -51,7 +51,7 @@ class DNN(nn.Module):
                 [nn.BatchNorm1d(hidden_units[i + 1]) for i in range(len(hidden_units) - 1)])
         for name, tensor in self.linears.named_parameters():
             if 'weight' in name:
-                #nn.init.normal_(tensor, mean=0, std=init_std)
+                # nn.init.normal_(tensor, mean=0, std=init_std)
                 nn.init.kaiming_normal_(tensor)
 
         self.to(device)
@@ -74,12 +74,13 @@ class DNN(nn.Module):
 
 
 class TextCNN(nn.Module):
-    def __init__(self, embedding_dimension, vocabulary_size, class_num, filter_num=100,
-                 filter_sizes=[3,4,5], dropout=0, device='cpu'):
+    def __init__(self, embedding_dimension, vocabulary_size, hidden_units, filter_num=100,
+                 filter_sizes=[3,4,5], dropout=0, device='cpu', use_bn=True, init_std=0.0001,):
         super(TextCNN, self).__init__()
         chanel_num = 1
+        self.use_bn = use_bn
 
-        self.embedding = nn.Embedding(vocabulary_size, embedding_dimension)
+        self.embedding = nn.Embedding(vocabulary_size, embedding_dimension, padding_idx=0)
         # if args.static:
         #     self.embedding = self.embedding.from_pretrained(args.vectors, freeze=not args.non_static)
         # if args.multichannel:
@@ -90,11 +91,20 @@ class TextCNN(nn.Module):
         self.convs = nn.ModuleList(
             [nn.Conv2d(chanel_num, filter_num, (size, embedding_dimension)) for size in filter_sizes])
         self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(len(filter_sizes) * filter_num, class_num)
 
-        for name, tensor in self.named_parameters():
+        hidden_units = [len(filter_sizes)*filter_num] + list(hidden_units)
+        self.linears = nn.ModuleList(
+            [nn.Linear(hidden_units[i], hidden_units[i + 1]) for i in range(len(hidden_units) - 1)])
+
+        if self.use_bn:
+            self.bn = nn.ModuleList(
+                [nn.BatchNorm1d(hidden_units[i + 1]) for i in range(len(hidden_units) - 1)])
+
+        nn.init.kaiming_normal_(self.embedding.weight)
+        nn.init.normal_(self.embedding.weight, mean=0, std=init_std)
+        for name, tensor in self.linears.named_parameters():
             if 'weight' in name:
-                #nn.init.normal_(tensor, mean=0, std=init_std)
+                # nn.init.normal_(tensor, mean=0, std=init_std)
                 nn.init.kaiming_normal_(tensor)
 
         self.to(device)
@@ -109,8 +119,20 @@ class TextCNN(nn.Module):
         x = [F.max_pool1d(item, item.size(2)).squeeze(2) for item in x]
         x = torch.cat(x, 1)
         x = self.dropout(x)
-        logits = self.fc(x)
-        return logits
+
+        for i in range(len(self.linears)):
+
+            fc = self.linears[i](x)
+
+            if self.use_bn:
+                fc = self.bn[i](fc)
+
+            fc = F.relu(fc)
+
+            fc = self.dropout(fc)
+            x = fc
+
+        return x
 
 
 class PredictionLayer(nn.Module):
