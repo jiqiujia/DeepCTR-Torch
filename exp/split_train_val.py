@@ -29,12 +29,14 @@ if __name__ == '__main__':
     test_shard_num = int(sys.argv[5])
     out_path = sys.argv[6]
 
-
+    print('split train val')
     train, val = train_test_split(lines, test_size=val_prop)
     if test_prop > 0:
+        print('split train test')
         train, test = train_test_split(train, test_size=test_prop)
 
+    print('writing out...')
     write_out(train, out_path, "train", train_shard_num)
     write_out(val, out_path, "val", test_shard_num)
     if test_prop > 0:
-        write_out(test, out_path, "train", test_shard_num)
+        write_out(test, out_path, "test", test_shard_num)

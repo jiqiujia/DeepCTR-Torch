@@ -82,7 +82,7 @@ class Dict(object):
             self.addSpecial(label)
 
     # Add `label` in the dictionary. Use `idx` as its index if given.
-    def add(self, label, idx=None):
+    def add(self, label, idx=None, freq=1):
         label = label.lower() if self.lower else label
         if idx is not None:
             self.idxToLabel[idx] = label
@@ -96,9 +96,9 @@ class Dict(object):
                 self.labelToIdx[label] = idx
 
         if idx not in self.frequencies:
-            self.frequencies[idx] = 1
+            self.frequencies[idx] = freq
         else:
-            self.frequencies[idx] += 1
+            self.frequencies[idx] += freq
 
         return idx
 
