@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
-import sys
-import io
+import io, os
 import glob
 from deepctr_torch.models import *
-from deepctr_torch.inputs import SparseFeat, DenseFeat, VarLenSparseFeat, get_feature_names
-from deepctr_torch.input_loaders import MultiShardsPairDataset
+from deepctr_torch.inputs import SparseFeat, VarLenSparseFeat, get_feature_names
+from deepctr_torch.datasets import TextMatchingDataset
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 import argparse
-import collections
 import logging
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -21,9 +19,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--header_file", type=str, required=True)
-    parser.add_argument("--data_file", type=str, required=True)
-    parser.add_argument("--val_file", type=str, required=True)
-    parser.add_argument("--test_file", type=str, required=True)
+    parser.add_argument("--root", type=str, required=True)
+    parser.add_argument("--pair_file", type=str, required=True)
+    parser.add_argument("--query_file", type=str, required=True)
+    parser.add_argument("--doc_file", type=str, required=True)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--epoch_num", type=int, default=2)
     parser.add_argument("--embed_dim", type=int, required=True)
@@ -62,7 +61,7 @@ if __name__ == "__main__":
     query_fixlen_feature_columns = [SparseFeat(feat, col_dim_dict[feat]) for feat in feat_columns]
     query_varlen_feature_columns = [VarLenSparseFeat(feat, col_dim_dict[feat], args.query_feat_maxlen, 'mean')
                                     for feat in query_varlen_feat_cols]
-    #query_dnn_feature_columns = query_fixlen_feature_columns + query_varlen_feature_columns
+    # query_dnn_feature_columns = query_fixlen_feature_columns + query_varlen_feature_columns
     query_dnn_feature_columns = query_varlen_feature_columns
     match_fixlen_feature_columns = [SparseFeat(feat, col_dim_dict[feat]) for feat in feat_columns]
     match_varlen_feature_columns = [VarLenSparseFeat(feat, col_dim_dict[feat], args.match_feat_maxlen, 'mean')
@@ -79,18 +78,24 @@ if __name__ == "__main__":
     # 3.generate input data for model
 
     shard_paths = glob.glob(args.data_file)
-    train_dataset = MultiShardsPairDataset(shard_paths, columns, all_feat_cols,
-                                           args.query_feat_maxlen, args.match_feat_maxlen)
+    train_dataset = TextMatchingDataset(os.path.join(args.root, args.query_file),
+                                        os.path.join(args.root, args.doc_file),
+                                        os.path.join(args.root, args.pair_file),
+                                        args.query_feat_maxlen, args.match_feat_maxlen)
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=0,
                                   collate_fn=default_collate, drop_last=True)
 
-    val_dataset = MultiShardsPairDataset(glob.glob(args.val_file), columns, all_feat_cols,
-                                         args.query_feat_maxlen, args.match_feat_maxlen)
+    val_dataset = TextMatchingDataset(os.path.join(args.root, 'val_' + args.query_file),
+                                      os.path.join(args.root, 'val_' + args.doc_file),
+                                      os.path.join(args.root, 'val_' + args.pair_file),
+                                      args.query_feat_maxlen, args.match_feat_maxlen)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=0,
                             collate_fn=default_collate)
 
-    test_dataset = MultiShardsPairDataset(glob.glob(args.test_file), columns, all_feat_cols,
-                                          args.query_feat_maxlen, args.match_feat_maxlen)
+    test_dataset = TextMatchingDataset(os.path.join(args.root, 'test_' + args.query_file),
+                                       os.path.join(args.root, 'test_' + args.doc_file),
+                                       os.path.join(args.root, 'test_' + args.pair_file),
+                                       args.query_feat_maxlen, args.match_feat_maxlen)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=0,
                              collate_fn=default_collate)
     # 4.Define Model,train,predict and evaluate

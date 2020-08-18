@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
-import sys
 import io
 import glob
 from deepctr_torch.models import *
-from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
-from deepctr_torch.input_loaders import MultiShardsCSVDataset
+from deepctr_torch.inputs import SparseFeat, get_feature_names
+from deepctr_torch.datasets.input_loaders import MultiShardsCSVDataset
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 import argparse
-import collections
 import logging
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
